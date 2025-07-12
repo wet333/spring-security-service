@@ -13,12 +13,6 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
@@ -31,3 +25,59 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Spring Boot ###
+application-*.properties
+application-*.yml
+application-*.yaml
+*.log
+*.log.*
+logs/
+
+### Security ###
+*.key
+*.pem
+*.p12
+*.jks
+.env
+.env.*
+
+### Database ###
+*.db
+*.sqlite
+*.sqlite3
+db/
+
+### Docker ###
+.dockerignore
+docker-compose.override.yml
+docker-compose.override.yaml
+
+### Additional IDE ###
+# Eclipse
+.metadata
+bin/
+tmp/
+*.bak
+*.swp
+*~.nib
+local.properties
+
+# JetBrains
+*.iml
+.idea/
+out/
+.idea
+*.iws
+*.ipr
+
+### Maven ###
+dependency-reduced-pom.xml
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+### Temporary files ###
+*.tmp
+*.temp
+*~
+CLAUDE.md
