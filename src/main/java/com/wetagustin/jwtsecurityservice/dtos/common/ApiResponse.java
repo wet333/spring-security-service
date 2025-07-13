@@ -1,6 +1,7 @@
 package com.wetagustin.jwtsecurityservice.dtos.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,11 +11,19 @@ import java.util.Map;
 @Getter
 @Setter
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Schema(description = "Standard API response wrapper for all endpoints")
 public class ApiResponse<T> {
     
+    @Schema(description = "Response message describing the operation result", example = "Operation successful")
     private String message;
+    
+    @Schema(description = "Response data of generic type T")
     private T data;
+    
+    @Schema(description = "Additional metadata for the response")
     private Map<String, Object> extraData;
+    
+    @Schema(description = "Timestamp when the response was generated", example = "2024-01-01T12:00:00")
     private LocalDateTime timestamp;
     
     public ApiResponse() {

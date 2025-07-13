@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+
+  security:
+    image: spring-security-service:latest
+    restart: always
+    environment:
+      # Database configuration using environment variables
+      DATABASE_URL: jdbc:postgresql://db:5432/resource-db
+      DATABASE_USERNAME: username
+      DATABASE_PASSWORD: password
+      # Keycloak configuration
+      KEYCLOAK_ENDPOINTS_BASE: http://host.docker.internal:9000
+      KEYCLOAK_REALM: spring-oauth2-resource-server-test
+      KEYCLOAK_CLIENT_ID: spring-api
+      KEYCLOAK_CLIENT_SECRET: EGLs25BEZNBjBC2sxkTrpwxCRRTf3lY9
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://host.docker.internal:9000/realms/spring-oauth2-resource-server-test
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: resource-db
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
