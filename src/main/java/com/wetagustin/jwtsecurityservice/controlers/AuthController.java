@@ -3,93 +3,74 @@ package com.wetagustin.jwtsecurityservice.controlers;
 import com.wetagustin.jwtsecurityservice.dtos.auth.LoginRequest;
 import com.wetagustin.jwtsecurityservice.dtos.auth.LoginResponse;
 import com.wetagustin.jwtsecurityservice.dtos.auth.LogoutRequest;
-import com.wetagustin.jwtsecurityservice.dtos.common.ErrorResponse;
-import org.springframework.beans.factory.annotation.Value;
+import com.wetagustin.jwtsecurityservice.dtos.common.ApiResponse;
+import com.wetagustin.jwtsecurityservice.services.OAuth2KeycloakService;
 import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Value("${keycloak.endpoints.base}")
-    private String keycloakUrl;
+    private final OAuth2KeycloakService oAuth2KeycloakService;
 
-    @Value("${keycloak.realm}")
-    private String realm;
-
-    @Value("${keycloak.clientId}")
-    private String clientId;
-
-    @Value("${keycloak.clientSecret}")
-    private String clientSecret;
-
-    private final RestTemplate restTemplate = new RestTemplate();
+    public AuthController(OAuth2KeycloakService oAuth2KeycloakService) {
+        this.oAuth2KeycloakService = oAuth2KeycloakService;
+    }
 
     @PostMapping("/login")
-    public ResponseEntity<?> getToken(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<ApiResponse<LoginResponse>> getToken(@RequestBody LoginRequest loginRequest) {
         try {
-            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-            formData.add("grant_type", "password");
-            formData.add("username", loginRequest.getUsername());
-            formData.add("password", loginRequest.getPassword());
-            formData.add("client_id", clientId);
-            formData.add("client_secret", clientSecret);
+            if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.of("Username is required"));
+            }
+            if (loginRequest.getPassword() == null || loginRequest.getPassword().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.of("Password is required"));
+            }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            String username = loginRequest.getUsername().trim();
+            String password = loginRequest.getPassword().trim();
 
-            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
-
-            String tokenUrl = String.format("%s/realms/%s/protocol/openid-connect/token", keycloakUrl, realm);
-
-            ResponseEntity<LoginResponse> response = restTemplate.postForEntity(
-                    tokenUrl, entity, LoginResponse.class
-            );
-
-            return ResponseEntity.ok(response.getBody());
+            ResponseEntity<LoginResponse> response = oAuth2KeycloakService.authenticateUser(username, password);
+            return ResponseEntity.ok(ApiResponse.of("Login successful", response.getBody()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid credentials"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.of("Invalid credentials"));
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody LogoutRequest logoutRequest) {
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestBody LogoutRequest logoutRequest) {
         try {
-            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-            formData.add("token", logoutRequest.getToken());
-            formData.add("client_id", clientId);
-            formData.add("client_secret", clientSecret);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(formData, headers);
-
-            String revokeUrl = String.format("%s/realms/%s/protocol/openid-connect/revoke", keycloakUrl, realm);
-
-            restTemplate.postForEntity(revokeUrl, entity, String.class);
-
-            if (logoutRequest.getRefreshToken() != null && !logoutRequest.getRefreshToken().isEmpty()) {
-                MultiValueMap<String, String> refreshFormData = new LinkedMultiValueMap<>();
-                refreshFormData.add("token", logoutRequest.getRefreshToken());
-                refreshFormData.add("client_id", clientId);
-                refreshFormData.add("client_secret", clientSecret);
-
-                HttpEntity<MultiValueMap<String, String>> refreshEntity = new HttpEntity<>(refreshFormData, headers);
-                restTemplate.postForEntity(revokeUrl, refreshEntity, String.class);
+            if (logoutRequest.getToken() == null || logoutRequest.getToken().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.of("Token is required"));
+            }
+            if (logoutRequest.getRefreshToken() == null || logoutRequest.getRefreshToken().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.of("Refresh token is required"));
             }
 
-            return ResponseEntity.ok().build();
+            String token = logoutRequest.getToken();
+            String refreshToken = logoutRequest.getRefreshToken();
+
+            // Primary approach: Use logout endpoint to terminate the entire session
+            boolean sessionLogoutSuccess = oAuth2KeycloakService.performSessionLogout(refreshToken);
+            if (sessionLogoutSuccess) {
+                return ResponseEntity.ok(ApiResponse.of("Logout successful"));
+            }
+
+            // Fallback approach: Revoke tokens individually
+            boolean tokenRevocationSuccess = oAuth2KeycloakService.performTokenRevocation(token, refreshToken);
+            if (tokenRevocationSuccess) {
+                return ResponseEntity.ok(ApiResponse.of("Logout successful"));
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.of("Failed to logout"));
+            }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Failed to logout"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResponse.of("Failed to logout: " + e.getMessage())
+            );
         }
     }
-
 }

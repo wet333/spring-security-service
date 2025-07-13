@@ -1,5 +1,7 @@
 package com.wetagustin.jwtsecurityservice.controlers;
 
+import com.wetagustin.jwtsecurityservice.dtos.common.ApiResponse;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,7 +20,7 @@ import java.util.Objects;
 public class ApiController {
 
     @GetMapping("/status")
-    public Map<String, Object> status() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> status() {
         Map<String, Object> status = new HashMap<>();
         status.put("service", "jwt-security-service");
         status.put("status", "running");
@@ -38,24 +40,29 @@ public class ApiController {
         ));
         
         status.put("endpoints", endpoints);
-        return status;
+        return ResponseEntity.ok(ApiResponse.of("Service status", status));
     }
 
     @GetMapping("/home")
-    public String hello() {
-        return "Unprotected main Endpoint";
+    public ResponseEntity<ApiResponse<String>> hello() {
+        return ResponseEntity.ok(ApiResponse.of("Unprotected main Endpoint"));
     }
 
     @GetMapping("/protected/home")
-    public String protectedHello() {
-        return "Protected main Endpoint";
+    public ResponseEntity<ApiResponse<String>> protectedHello() {
+        return ResponseEntity.ok(ApiResponse.of("Protected main Endpoint"));
     }
 
     @GetMapping("/protected/userData")
-    public String protectedEndpoint(@AuthenticationPrincipal Jwt user) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> protectedEndpoint(@AuthenticationPrincipal Jwt user) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         List<String> roles = authentication.getAuthorities().stream().map(Objects::toString).toList();
         Map<String, Object> attributes = user.getClaims();
-        return "User Data: \n" + attributes.toString() + "\n\n" + roles.toString();
+        
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("claims", attributes);
+        userData.put("roles", roles);
+        
+        return ResponseEntity.ok(ApiResponse.of("User data", userData));
     }
 }
