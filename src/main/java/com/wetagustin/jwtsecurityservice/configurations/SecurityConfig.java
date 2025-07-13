@@ -25,9 +25,14 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
+                    // App public endpoints
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/status").permitAll()
                     .requestMatchers("/api/home").permitAll()
+                    // Documentation Endpoints
+                    .requestMatchers("/swagger-ui/**").permitAll()
+                    .requestMatchers("/api-docs/**").permitAll()
+                    .requestMatchers("/v3/**").permitAll()
                     .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
