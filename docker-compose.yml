@@ -1,5 +1,8 @@
+version: '3.8'
+
 services:
-  db:
+
+  app-db:
     image: postgres:15
     restart: always
     environment:
@@ -9,7 +12,59 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - app_db_data:/var/lib/postgresql/data
+
+  keycloak-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"  # Different port to avoid conflict
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    restart: always
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "9000:8080"
+    depends_on:
+      - keycloak-db
+    command: start-dev
+
+  # Spring Security Service - only in production profile
+  security:
+    image: spring-security-service:latest
+    restart: always
+    environment:
+      # Database configuration
+      DATABASE_URL: jdbc:postgresql://app-db:5432/resource-db
+      DATABASE_USERNAME: username
+      DATABASE_PASSWORD: password
+      # Keycloak configuration
+      KEYCLOAK_ENDPOINTS_BASE: http://keycloak:8080
+      KEYCLOAK_REALM: spring-oauth2-resource-server-test
+      KEYCLOAK_CLIENT_ID: spring-api
+      KEYCLOAK_CLIENT_SECRET: EGLs25BEZNBjBC2sxkTrpwxCRRTf3lY9
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/spring-oauth2-resource-server-test
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app-db
+      - keycloak
+    profiles:
+      - production
 
 volumes:
-  db_data:
+  app_db_data:
+  keycloak_db_data:
