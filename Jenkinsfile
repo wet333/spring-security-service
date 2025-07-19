@@ -19,9 +19,6 @@ pipeline {
 			steps {
 				checkout scm
 				echo 'Checkout project.'
-			}
-
-			script {
 				echo "Build number: ${env.BUILD_NUMBER}"
 				echo "Job name: ${env.JOB_NAME}"
 			}
