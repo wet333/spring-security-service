@@ -33,8 +33,8 @@ pipeline {
 		stage('Test') {
 			steps {
 				echo 'Starting dev environment...'
-				sh 'docker-compose -f docker-compose.yml up --build --abort-on-container-exit'
-				sh 'docker-compose -f docker-compose.yml down -v'
+				sh 'docker compose -f docker-compose.yml up --build --abort-on-container-exit'
+				sh 'docker compose -f docker-compose.yml down -v'
 				sh 'mvn test'
 			}
 
